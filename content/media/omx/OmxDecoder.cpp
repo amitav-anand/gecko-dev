@@ -273,6 +273,7 @@ OmxDecoder::OmxDecoder(MediaResource *aResource,
   mDurationUs(-1),
   mMP3FrameParser(aResource->GetLength()),
   mIsMp3(false),
+  mIsPauseDisabled(false),
   mVideoBuffer(nullptr),
   mAudioBuffer(nullptr),
   mIsVideoSeeking(false),
@@ -280,6 +281,16 @@ OmxDecoder::OmxDecoder(MediaResource *aResource,
   mAudioPaused(false),
   mVideoPaused(false)
 {
+  // Pause is used to reduce power consumption.
+  // It is necessary on CAF. But aosp omx does not support it.
+  // And some hardwares do not need it.
+  // See Bug 919590 Applied 919590 Patch
+  char value[PROPERTY_VALUE_MAX];
+  if (property_get("ro.moz.moz.omx.disable_pause", value, 0)
+          && (!strcasecmp(value, "true") || !strcmp(value, "1"))) {
+    mIsPauseDisabled = true;
+  }
+  	
   mLooper = new ALooper;
   mLooper->setName("OmxDecoder");
 
@@ -901,8 +912,12 @@ bool OmxDecoder::ReadAudio(AudioFrame *aFrame, int64_t aSeekTimeUs)
 
 nsresult OmxDecoder::Play()
 {
+  if (!mIsPauseDisabled) {
+    return NS_ERROR_FAILURE;
+  }
+
   if (!mVideoPaused && !mAudioPaused) {
-    return NS_OK;
+      return NS_OK;
   }
 
   if (mVideoPaused && mVideoSource.get() && mVideoSource->start() != OK) {
@@ -928,8 +943,12 @@ nsresult OmxDecoder::Play()
 // We need to fix it until it is really happened.
 void OmxDecoder::Pause()
 {
+  if (!mIsPauseDisabled) {
+    return NS_ERROR_NOT_IMPLEMENTED;
+  }
+
   if (mVideoPaused || mAudioPaused) {
-    return;
+      return;
   }
 
   if (mVideoSource.get() && mVideoSource->pause() == OK) {

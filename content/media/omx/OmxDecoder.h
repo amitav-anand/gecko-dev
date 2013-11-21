@@ -114,6 +114,7 @@ class OmxDecoder : public OMXCodecProxy::EventListener {
   AudioFrame mAudioFrame;
   MP3FrameParser mMP3FrameParser;
   bool mIsMp3;
+  bool mIsPauseDisabled;
 
   // Lifetime of these should be handled by OMXCodec, as long as we release
   //   them after use: see ReleaseVideoBuffer(), ReleaseAudioBuffer()
@@ -230,7 +231,7 @@ public:
   nsresult Play();
 
   //Change decoder into a paused state
-  void Pause();
+  nsresult Pause();
 
   // Post kNotifyPostReleaseVideoBuffer message to OmxDecoder via ALooper.
   void PostReleaseVideoBuffer(MediaBuffer *aBuffer);
